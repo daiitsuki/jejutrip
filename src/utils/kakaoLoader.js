@@ -1,36 +1,54 @@
 export const loadKakaoSdk = () => {
   return new Promise((resolve, reject) => {
-    if (window.kakao && window.kakao.maps) {
-      resolve();
-      return;
-    }
-
     const apiKey = import.meta.env.VITE_KAKAO_API_KEY;
 
     if (!apiKey) {
       console.warn('VITE_KAKAO_API_KEY is not defined in .env.local');
-      // Resolve anyway to prevent app crash, button will just alert user
       resolve(); 
       return;
     }
 
-    const script = document.createElement('script');
-    // libraries=services is required for Geocoder
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&libraries=services&autoload=false`;
-    script.async = true;
-    
-    script.onload = () => {
-      window.kakao.maps.load(() => {
-        console.log('Kakao Maps SDK loaded');
-        resolve();
+    // 1. Load Main Kakao JS SDK (for Navi)
+    const loadMainSdk = () => {
+      return new Promise((res) => {
+        if (window.Kakao && window.Kakao.isInitialized()) {
+          res();
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.0/kakao.min.js';
+        script.onload = () => {
+          if (!window.Kakao.isInitialized()) {
+            window.Kakao.init(apiKey);
+          }
+          res();
+        };
+        document.head.appendChild(script);
       });
     };
-    
-    script.onerror = (err) => {
-      console.error('Failed to load Kakao Maps SDK', err);
-      reject(err);
+
+    // 2. Load Maps SDK (for Geocoder)
+    const loadMapsSdk = () => {
+      return new Promise((res) => {
+        if (window.kakao && window.kakao.maps) {
+          res();
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&libraries=services&autoload=false`;
+        script.async = true;
+        script.onload = () => {
+          window.kakao.maps.load(() => res());
+        };
+        document.head.appendChild(script);
+      });
     };
 
-    document.head.appendChild(script);
+    Promise.all([loadMainSdk(), loadMapsSdk()])
+      .then(() => {
+        console.log('All Kakao SDKs loaded');
+        resolve();
+      })
+      .catch(reject);
   });
 };

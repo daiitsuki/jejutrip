@@ -49,11 +49,16 @@ const TimelineItem = ({ item, onEdit, onDelete, isEditing, editingSchedule, onSa
         const name = item.title;
         const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-        if (isMobile) {
-          // Direct navigation via KakaoNavi app
-          window.location.href = `kakaonavi://navigate?name=${encodeURIComponent(name)}&x=${lng}&y=${lat}&coord_type=wgs84`;
+        if (isMobile && window.Kakao && window.Kakao.Navi) {
+          // Official SDK navigation for Mobile
+          window.Kakao.Navi.start({
+            name: name,
+            x: Number(lng),
+            y: Number(lat),
+            coordType: 'wgs84',
+          });
         } else {
-          // Web navigation for PC
+          // Web navigation for PC or if SDK fails
           const url = `https://map.kakao.com/link/to/${encodeURIComponent(name)},${lat},${lng}`;
           window.open(url, '_blank');
         }
