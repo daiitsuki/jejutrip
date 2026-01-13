@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
-import { supabase } from "./supabaseClient";
-import Header from "./components/Header";
-import ScheduleForm from "./components/ScheduleForm";
-import Timeline from "./components/Timeline";
+import { useState, useEffect } from 'react';
+import { supabase } from './supabaseClient';
+import { loadKakaoSdk } from './utils/kakaoLoader';
+import Header from './components/Header';
+import ScheduleForm from './components/ScheduleForm';
+import Timeline from './components/Timeline';
 
 function App() {
   const [schedules, setSchedules] = useState([]);
@@ -10,33 +11,46 @@ function App() {
   const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {
-    fetchSchedules();
+    // Load Kakao SDK
+    loadKakaoSdk().catch(err => console.error('Kakao SDK Load Error:', err));
 
-    const channel = supabase
-      .channel("realtime_schedules")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "schedules" },
-        (payload) => {
-          if (payload.eventType === "INSERT") {
-            setSchedules((prev) => [...prev, payload.new]);
-          } else if (payload.eventType === "UPDATE") {
-            setSchedules((prev) =>
-              prev.map((item) =>
-                item.id === payload.new.id ? payload.new : item
-              )
-            );
-          } else if (payload.eventType === "DELETE") {
-            setSchedules((prev) =>
-              prev.filter((item) => item.id !== payload.old.id)
-            );
+    let channel = null;
+
+    const initializeData = async () => {
+      await fetchSchedules();
+      
+      channel = supabase
+        .channel('realtime_schedules')
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "schedules" },
+          (payload) => {
+            if (payload.eventType === "INSERT") {
+              setSchedules((prev) => {
+                // Prevent duplicates if fetchSchedules already got it
+                if (prev.find(item => item.id === payload.new.id)) return prev;
+                return [...prev, payload.new];
+              });
+            } else if (payload.eventType === "UPDATE") {
+              setSchedules((prev) =>
+                prev.map((item) =>
+                  item.id === payload.new.id ? payload.new : item
+                )
+              );
+            } else if (payload.eventType === "DELETE") {
+              setSchedules((prev) =>
+                prev.filter((item) => item.id !== payload.old.id)
+              );
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
+    };
+
+    initializeData();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
     };
   }, []);
 
@@ -49,6 +63,7 @@ function App() {
 
     if (error) {
       console.error("Error fetching schedules:", error);
+      alert("일정을 불러오는데 실패했습니다.");
     } else {
       setSchedules(data);
     }
@@ -61,13 +76,21 @@ function App() {
         .update(schedule)
         .eq("id", editingSchedule.id);
 
-      if (error) console.error("Error updating schedule:", error);
+      if (error) {
+        console.error("Error updating schedule:", error);
+        alert("일정 수정 중 오류가 발생했습니다.");
+        return;
+      }
       setEditingSchedule(null);
     } else {
       const { id, ...newSchedule } = schedule;
       const { error } = await supabase.from("schedules").insert([newSchedule]);
 
-      if (error) console.error("Error inserting schedule:", error);
+      if (error) {
+        console.error("Error inserting schedule:", error);
+        alert("일정 추가 중 오류가 발생했습니다.");
+        return;
+      }
       setIsAdding(false);
     }
   };
@@ -82,7 +105,10 @@ function App() {
     if (window.confirm("이 일정을 삭제하시겠습니까?")) {
       const { error } = await supabase.from("schedules").delete().eq("id", id);
 
-      if (error) console.error("Error deleting schedule:", error);
+      if (error) {
+        console.error("Error deleting schedule:", error);
+        alert("일정 삭제 중 오류가 발생했습니다.");
+      }
     }
   };
 

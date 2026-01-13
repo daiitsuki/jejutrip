@@ -33,6 +33,38 @@ const TimelineItem = ({ item, onEdit, onDelete, isEditing, editingSchedule, onSa
     );
   }
 
+  const handleNavigation = (e) => {
+    e.preventDefault();
+
+    if (!window.kakao || !window.kakao.maps || !window.kakao.maps.services) {
+      // SDK not loaded or API key missing, fallback to search
+      window.open(`https://map.kakao.com/link/search/${encodeURIComponent(item.location)}`, '_blank');
+      return;
+    }
+
+    const geocoder = new window.kakao.maps.services.Geocoder();
+    geocoder.addressSearch(item.location, (result, status) => {
+      if (status === window.kakao.maps.services.Status.OK) {
+        const { y: lat, x: lng } = result[0];
+        const name = item.title;
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+        if (isMobile) {
+          // Direct navigation via KakaoNavi app
+          window.location.href = `kakaonavi://navigate?name=${encodeURIComponent(name)}&x=${lng}&y=${lat}&coord_type=wgs84`;
+        } else {
+          // Web navigation for PC
+          const url = `https://map.kakao.com/link/to/${encodeURIComponent(name)},${lat},${lng}`;
+          window.open(url, '_blank');
+        }
+      } else {
+        // Geocoding failed, fallback to name search
+        console.warn('Geocoding failed, falling back to search');
+        window.open(`https://map.kakao.com/link/search/${encodeURIComponent(item.location)}`, '_blank');
+      }
+    });
+  };
+
   return (
     <div className="bg-card-bg rounded-xl p-4 mb-2.5 shadow-md flex items-center relative group">
       <div className="absolute right-2.5 top-2.5 flex gap-1.5">
@@ -50,14 +82,12 @@ const TimelineItem = ({ item, onEdit, onDelete, isEditing, editingSchedule, onSa
         {item.location && (
           <div className="flex flex-wrap items-center gap-2 my-1">
             <div className="text-xs text-primary font-medium">📍 {item.location}</div>
-            <a 
-              href={`https://map.kakao.com/link/search/${encodeURIComponent(item.location)}`} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-xs py-1 px-2 bg-[#FEE500] text-black rounded hover:bg-[#FDD835] font-bold no-underline transition-colors shadow-sm flex items-center"
+            <button 
+              onClick={handleNavigation}
+              className="text-xs py-1 px-2 bg-[#FEE500] text-black rounded hover:bg-[#FDD835] font-bold border-none cursor-pointer transition-colors shadow-sm flex items-center"
             >
               길안내
-            </a>
+            </button>
           </div>
         )}
         {item.sub && <span className="text-sm text-text-sub whitespace-pre-wrap">{item.sub}</span>}
