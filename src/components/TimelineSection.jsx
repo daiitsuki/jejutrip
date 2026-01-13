@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import TimelineItem from './TimelineItem';
+import KakaoMap from './KakaoMap';
 
 const TimelineSection = ({ 
   date, 
@@ -12,6 +13,7 @@ const TimelineSection = ({
   onCancelEdit 
 }) => {
   const [isOpen, setIsOpen] = useState(true);
+  const [isMapOpen, setIsMapOpen] = useState(false);
   const storageKey = `jeju_trip_section_open_${date}`;
 
   useEffect(() => {
@@ -27,6 +29,18 @@ const TimelineSection = ({
     localStorage.setItem(storageKey, JSON.stringify(newState));
   };
 
+  const toggleMap = (e) => {
+    e.stopPropagation();
+    
+    // If opening the map and the section is closed, open the section
+    if (!isMapOpen && !isOpen) {
+      setIsOpen(true);
+      localStorage.setItem(storageKey, JSON.stringify(true));
+    }
+    
+    setIsMapOpen(!isMapOpen);
+  };
+
   const dateObj = new Date(date);
   const dayName = ['일', '월', '화', '수', '목', '금', '토'][dateObj.getDay()];
   const formattedDate = date.replace(/-/g, '.');
@@ -40,14 +54,32 @@ const TimelineSection = ({
         <div className="text-lg font-bold border-l-4 border-primary pl-2.5 text-gray-800">
           {dayCount}일차 | {formattedDate} ({dayName})
         </div>
-        <div className={`transform transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-          </svg>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={toggleMap}
+            className={`text-sm px-3 py-1.5 rounded-full border transition-all flex items-center gap-1 ${
+              isMapOpen 
+                ? 'bg-primary text-white border-primary' 
+                : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            {isMapOpen ? '지도 닫기' : '지도 보기'}
+          </button>
+          <div className={`transform transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </div>
         </div>
       </div>
       
       <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+        {isMapOpen && (
+          <div className="mb-6 px-1">
+            <KakaoMap schedules={schedules} />
+          </div>
+        )}
+        
         {schedules.map(item => (
           <TimelineItem
             key={item.id}
