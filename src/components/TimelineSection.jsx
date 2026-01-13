@@ -73,7 +73,7 @@ const TimelineSection = ({
         </div>
       </div>
       
-      <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+      <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isOpen ? 'max-h-[10000px] opacity-100' : 'max-h-0 opacity-0'}`}>
         {isMapOpen && (
           <div className="mb-6 px-1">
             <KakaoMap schedules={schedules} />
